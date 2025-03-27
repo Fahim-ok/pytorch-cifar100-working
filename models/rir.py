@@ -77,34 +77,34 @@ class ResnetInit(nn.Module):
 
 
 
-class RiRBlock(nn.Module):
-    def __init__(self, in_channel, out_channel, layer_num, stride, layer=ResnetInit):
-        super().__init__()
-        self.resnetinit = self._make_layers(in_channel, out_channel, layer_num, stride)
+# class RiRBlock(nn.Module):
+#     def __init__(self, in_channel, out_channel, layer_num, stride, layer=ResnetInit):
+#         super().__init__()
+#         self.resnetinit = self._make_layers(in_channel, out_channel, layer_num, stride)
 
-        #self.short_cut = nn.Sequential()
-        #if stride != 1 or in_channel != out_channel:
-        #    self.short_cut = nn.Conv2d(in_channel, out_channel, kernel_size=1, stride=stride)
+#         #self.short_cut = nn.Sequential()
+#         #if stride != 1 or in_channel != out_channel:
+#         #    self.short_cut = nn.Conv2d(in_channel, out_channel, kernel_size=1, stride=stride)
 
-    def forward(self, x):
-        x_residual, x_transient = self.resnetinit(x)
-        #x_residual = x_residual + self.short_cut(x[0])
-        #x_transient = x_transient + self.short_cut(x[1])
+#     def forward(self, x):
+#         x_residual, x_transient = self.resnetinit(x)
+#         #x_residual = x_residual + self.short_cut(x[0])
+#         #x_transient = x_transient + self.short_cut(x[1])
 
-        return (x_residual, x_transient)
+#         return (x_residual, x_transient)
 
-    #"""Replacing each of the convolutional layers within a residual
-    #block from the original ResNet (Figure 1a) with a generalized residual block
-    #(Figure 1b) leads us to a new architecture we call ResNet in ResNet (RiR)
-    #(Figure 1d)."""
-    def _make_layers(self, in_channel, out_channel, layer_num, stride, layer=ResnetInit):
-        strides = [stride] + [1] * (layer_num - 1)
-        layers = nn.Sequential()
-        for index, s in enumerate(strides):
-            layers.add_module("generalized layers{}".format(index), layer(in_channel, out_channel, s))
-            in_channel = out_channel
+#     #"""Replacing each of the convolutional layers within a residual
+#     #block from the original ResNet (Figure 1a) with a generalized residual block
+#     #(Figure 1b) leads us to a new architecture we call ResNet in ResNet (RiR)
+#     #(Figure 1d)."""
+#     def _make_layers(self, in_channel, out_channel, layer_num, stride, layer=ResnetInit):
+#         strides = [stride] + [1] * (layer_num - 1)
+#         layers = nn.Sequential()
+#         for index, s in enumerate(strides):
+#             layers.add_module("generalized layers{}".format(index), layer(in_channel, out_channel, s))
+#             in_channel = out_channel
 
-        return layers
+#         return layers
 
 class ResnetInResneet(nn.Module):
     def __init__(self, num_classes=100):
