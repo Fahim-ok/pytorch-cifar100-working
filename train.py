@@ -104,45 +104,53 @@ if __name__ == '__main__':
     # Use TensorBoard
     writer = SummaryWriter(log_dir=os.path.join(settings.LOG_DIR, args.net, settings.TIME_NOW))
 
-    # Train the model sequentially on each task
-    for task_id, task_classes in enumerate(tasks):
-        print(f"Training on Task {task_id + 1} with classes: {task_classes}")
+import torchvision
 
-        # Update the fully connected layer for the current task
-        net.update_fc(num_classes=len(task_classes))
-        if args.gpu:
-            net = net.cuda()
+# Ensure the dataset is downloaded
+if not os.path.exists(os.path.join(settings.CIFAR100_PATH, 'train')):
+    print("Downloading CIFAR-100 dataset...")
+    torchvision.datasets.CIFAR100(root=settings.CIFAR100_PATH, train=True, download=True)
+    torchvision.datasets.CIFAR100(root=settings.CIFAR100_PATH, train=False, download=True)
 
-        # Reinitialize the optimizer for the updated model
-        optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
+# Train the model sequentially on each task
+for task_id, task_classes in enumerate(tasks):
+    print(f"Training on Task {task_id + 1} with classes: {task_classes}")
 
-        # Create training and test datasets for the current task
-        train_dataset = CIFAR100Split(path=settings.CIFAR100_PATH, class_indices=task_classes, transform=None)
-        test_dataset = CIFAR100Split(path=settings.CIFAR100_PATH, class_indices=task_classes, transform=None)
+    # Update the fully connected layer for the current task
+    net.update_fc(num_classes=len(task_classes))
+    if args.gpu:
+        net = net.cuda()
 
-        train_loader = DataLoader(train_dataset, batch_size=args.b, shuffle=True, num_workers=4)
-        test_loader = DataLoader(test_dataset, batch_size=args.b, shuffle=False, num_workers=4)
+    # Reinitialize the optimizer for the updated model
+    optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
 
-        # Warm-up scheduler
-        iter_per_epoch = len(train_loader)
-        warmup_scheduler = WarmUpLR(optimizer, iter_per_epoch * args.warm)
+    # Create training and test datasets for the current task
+    train_dataset = CIFAR100Split(path=settings.CIFAR100_PATH, class_indices=task_classes, transform=None)
+    test_dataset = CIFAR100Split(path=settings.CIFAR100_PATH, class_indices=task_classes, transform=None)
 
-        best_acc = 0.0  # Reset best accuracy for each task
+    train_loader = DataLoader(train_dataset, batch_size=args.b, shuffle=True, num_workers=4)
+    test_loader = DataLoader(test_dataset, batch_size=args.b, shuffle=False, num_workers=4)
 
-        # Train for the specified number of epochs
-        for epoch in range(1, settings.EPOCH + 1):
-            if epoch > args.warm:
-                train_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=settings.MILESTONES, gamma=0.2)
-                train_scheduler.step(epoch)
+    # Warm-up scheduler
+    iter_per_epoch = len(train_loader)
+    warmup_scheduler = WarmUpLR(optimizer, iter_per_epoch * args.warm)
 
-            train(epoch, train_loader, net, optimizer, loss_function, writer, warmup_scheduler)
-            acc = eval_training(epoch, test_loader, net, loss_function, writer)
+    best_acc = 0.0  # Reset best accuracy for each task
 
-            # Save the best model for the current task
-            if best_acc < acc:
-                weights_path = os.path.join(settings.CHECKPOINT_PATH, f"task_{task_id + 1}_best.pth")
-                print(f"Saving best model for Task {task_id + 1} to {weights_path}")
-                torch.save(net.state_dict(), weights_path)
-                best_acc = acc
+    # Train for the specified number of epochs
+    for epoch in range(1, settings.EPOCH + 1):
+        if epoch > args.warm:
+            train_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=settings.MILESTONES, gamma=0.2)
+            train_scheduler.step(epoch)
 
-    writer.close()
+        train(epoch, train_loader, net, optimizer, loss_function, writer, warmup_scheduler)
+        acc = eval_training(epoch, test_loader, net, loss_function, writer)
+
+        # Save the best model for the current task
+        if best_acc < acc:
+            weights_path = os.path.join(settings.CHECKPOINT_PATH, f"task_{task_id + 1}_best.pth")
+            print(f"Saving best model for Task {task_id + 1} to {weights_path}")
+            torch.save(net.state_dict(), weights_path)
+            best_acc = acc
+
+writer.close()
