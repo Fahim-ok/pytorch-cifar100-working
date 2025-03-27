@@ -112,6 +112,14 @@ if not os.path.exists(os.path.join(settings.CIFAR100_PATH, 'train')):
     torchvision.datasets.CIFAR100(root=settings.CIFAR100_PATH, train=True, download=True)
     torchvision.datasets.CIFAR100(root=settings.CIFAR100_PATH, train=False, download=True)
 
+import torchvision.transforms as transforms
+
+# Define a transformation to convert images to tensors and normalize them
+transform = transforms.Compose([
+    transforms.ToTensor(),  # Convert PIL images to tensors
+    transforms.Normalize(mean=settings.CIFAR100_TRAIN_MEAN, std=settings.CIFAR100_TRAIN_STD)  # Normalize
+])
+
 # Train the model sequentially on each task
 for task_id, task_classes in enumerate(tasks):
     print(f"Training on Task {task_id + 1} with classes: {task_classes}")
@@ -125,11 +133,11 @@ for task_id, task_classes in enumerate(tasks):
     optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
 
     # Create training and test datasets for the current task
-    train_dataset = CIFAR100Split(path=settings.CIFAR100_PATH, class_indices=task_classes, transform=None)
-    test_dataset = CIFAR100Split(path=settings.CIFAR100_PATH, class_indices=task_classes, transform=None)
+    train_dataset = CIFAR100Split(path=settings.CIFAR100_PATH, class_indices=task_classes, transform=transform)
+    test_dataset = CIFAR100Split(path=settings.CIFAR100_PATH, class_indices=task_classes, transform=transform, train=False)
 
-    train_loader = DataLoader(train_dataset, batch_size=args.b, shuffle=True, num_workers=4)
-    test_loader = DataLoader(test_dataset, batch_size=args.b, shuffle=False, num_workers=4)
+    train_loader = DataLoader(train_dataset, batch_size=args.b, shuffle=True, num_workers=2)  # Reduce workers to 2
+    test_loader = DataLoader(test_dataset, batch_size=args.b, shuffle=False, num_workers=2)
 
     # Warm-up scheduler
     iter_per_epoch = len(train_loader)
