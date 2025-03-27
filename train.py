@@ -51,14 +51,13 @@ def train(epoch, train_loader, net, optimizer, loss_function, writer, warmup_sch
 def eval_training(epoch, test_loader, net, loss_function, writer):
     start = time.time()
     net.eval()
+    device = next(net.parameters()).device  # Get the device of the model
 
     test_loss = 0.0
     correct = 0.0
 
     for (images, labels) in test_loader:
-        if args.gpu:
-            images = images.cuda()
-            labels = labels.cuda()
+        images, labels = images.to(device), labels.to(device)  # Move to the correct device
 
         outputs = net(images)
         loss = loss_function(outputs, labels)
